@@ -1,0 +1,42 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inventory Management</title>
+</head>
+<body>
+    <h2>Inventory Summary</h2>
+    <button onclick="loadItems()">Refresh</button>
+    <table border="1" id="table">
+        <tr>
+            <th>Name</th>
+            <th>Quantity</th>
+            <th>Threshold</th>
+        </tr>
+    </table>
+
+<script>
+async function loadItems() {
+    const res = await fetch('http://localhost:5000/api/items');
+    const data = await res.json();
+    const table = document.getElementById('table');
+    table.innerHTML = `
+        <tr>
+            <th>Name</th>
+            <th>Quantity</th>
+            <th>Threshold</th>
+        </tr>
+    `;
+    data.forEach(item => {
+        table.innerHTML += `
+            <tr>
+                <td>${item.itemName}</td>
+                <td>${item.quantity}</td>
+                <td>${item.threshold}</td>
+            </tr>
+        `;
+    });
+}
+</script>
+</body>
+</html>
