@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Billing System</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* LIGHT THEME CHANGES */
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: #f8fafc; /* Light Greyish Blue background */
+    color: #1e293b;
+    margin: 0;
+    padding: 30px;
+}
+
+.container {
+    max-width: 1300px;
+    margin: auto;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.header h1 {
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.card {
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* INPUT STYLES */
+input {
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-right: 10px;
+    outline: none;
+    transition: border 0.3s;
+    background: #f1f5f9;
+}
+
+input:focus {
+    border-color: #2563eb;
+    background: #fff;
+}
+
+/* SUPER BUTTONS */
+button {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border: none;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+.back {
+    background: #ffffff;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    box-shadow: none;
+    margin-left: 10px;
+}
+
+.back:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #1e293b;
+}
+
+/* SEARCH RESULT */
+#searchResults {
+    background: #ffffff;
+    max-height: 200px;
+    overflow: auto;
+    margin-top: 8px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    position: absolute; /* To float over content */
+    z-index: 10;
+    width: 250px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.result {
+    padding: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+
+.result:hover {
+    background: #f1f5f9;
+    color: #2563eb;
+}
+
+/* TABLE STYLES */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 25px;
+}
+
+th {
+    background: #f8fafc;
+    text-align: left;
+    color: #64748b;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+}
+
+th, td {
+    padding: 15px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+td {
+    color: #334155;
+    font-weight: 500;
+}
+
+.total {
+    font-size: 24px;
+    font-weight: 700;
+    color: #059669; /* Emerald green */
+    margin-top: 20px;
+    text-align: right;
+    padding-right: 15px;
+}
+
+/* GENERATE BILL BUTTON - SPECIAL STYLE */
+.btn-generate {
+    width: 100%;
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+    font-size: 16px;
+    margin-top: 20px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+    <h1>🧾 Supplier Billing / POS</h1>
+    <div>
+        <button class="back" onclick="window.location.href='index.html'">Inventory</button>
+        <button class="back" onclick="window.location.href='dashboard.html'">📊 Dashboard</button>
+    </div>
+</div>
+
+<div class="card">
+    <div style="position: relative;">
+        <input id="itemSearch" placeholder="Search Item..." onkeyup="filterItems()">
+        <input id="billQty" type="number" placeholder="Qty">
+        <button onclick="addToCart()">Add To Cart</button>
+        <div id="searchResults"></div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody id="cartTable"></tbody>
+    </table>
+
+    <div class="total">
+        Grand Total: ₹<span id="grandTotal">0</span>
+    </div>
+
+    <button class="btn-generate" onclick="generateBill()">
+        🚀 Generate Bill & Download Receipt
+    </button>
+</div>
+
+</div>
+
+<script>
+const API="http://localhost:5000/api/items";
+let inventory=[];
+let cart=[];
+let selectedItem=null;
+
+window.onload=loadItems;
+
+async function loadItems(){
+    try {
+        const res = await fetch(API);
+        inventory = await res.json();
+    } catch(err) { console.error("Error loading items", err); }
+}
+
+function filterItems(){
+    const query = document.getElementById("itemSearch").value.toLowerCase();
+    const resultBox = document.getElementById("searchResults");
+    resultBox.innerHTML = "";
+    if(query.length < 1) return;
+
+    inventory
+        .filter(i => i.itemName.toLowerCase().includes(query))
+        .slice(0, 10)
+        .forEach(item => {
+            const div = document.createElement("div");
+            div.className = "result";
+            div.innerText = `${item.itemName} (Stock: ${item.quantity})`;
+            div.onclick = () => {
+                selectedItem = item;
+                document.getElementById("itemSearch").value = item.itemName;
+                resultBox.innerHTML = "";
+            };
+            resultBox.appendChild(div);
+        });
+}
+
+function addToCart(){
+    const billQtyInput = document.getElementById("billQty");
+    if(!selectedItem) return alert("Select item");
+    const qty = Number(billQtyInput.value);
+    if(qty <= 0) return alert("Enter quantity");
+    if(qty > selectedItem.quantity) return alert("Insufficient stock");
+
+    cart.push({
+        itemId: selectedItem._id,
+        itemName: selectedItem.itemName,
+        quantity: qty,
+        price: selectedItem.unitPrice
+    });
+
+    selectedItem = null;
+    document.getElementById("itemSearch").value = "";
+    billQtyInput.value = "";
+    renderCart();
+}
+
+function renderCart(){
+    const cartTable = document.getElementById("cartTable");
+    const grandTotal = document.getElementById("grandTotal");
+    cartTable.innerHTML = "";
+    let total = 0;
+
+    cart.forEach(c => {
+        const t = c.quantity * c.price;
+        total += t;
+        cartTable.innerHTML += `
+        <tr>
+            <td>${c.itemName}</td>
+            <td>${c.quantity}</td>
+            <td>₹${c.price}</td>
+            <td>₹${t}</td>
+        </tr>`;
+    });
+    grandTotal.innerText = total;
+}
+
+async function generateBill(){
+    if(cart.length === 0) return alert("Cart empty");
+    try {
+        const res = await fetch("http://localhost:5000/api/bill", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ items: cart })
+        });
+        const bill = await res.json();
+        window.open(`http://localhost:5000/api/bill/${bill._id}/pdf`);
+        cart = [];
+        renderCart();
+        loadItems();
+    } catch(err) { alert("Error generating bill"); }
+}
+</script>
+
+</body>
+</html>
