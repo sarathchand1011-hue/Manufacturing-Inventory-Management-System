@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inventory Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg-color: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+        --primary: #4f46e5;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --border: #e2e8f0;
+      }
+
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background: var(--bg-color);
+        color: var(--text-main);
+        margin: 0;
+        padding: 20px;
+        min-height: 100vh;
+        box-sizing: border-box;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      /* Header Section */
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+        margin: 0;
+        font-weight: 700;
+      }
+
+      .back-btn {
+        background: white;
+        border: 1px solid var(--border);
+        color: var(--text-main);
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        font-size: 0.9rem;
+      }
+
+      .back-btn:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+      }
+
+      /* KPI CARDS */
+      .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+      }
+
+      .card {
+        background: var(--card-bg);
+        padding: 24px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .card h2 {
+        margin: 10px 0 0 0;
+        font-size: 1.8rem;
+        color: var(--text-main);
+        font-weight: 700;
+      }
+
+      #lowStock {
+        color: var(--warning);
+      }
+      #inventoryValue {
+        color: var(--primary);
+      }
+
+      /* CHART GRID */
+      .chart-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.5fr;
+        gap: 20px;
+      }
+
+      .chart-box {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        min-height: 380px;
+      }
+
+      .chart-box h4 {
+        margin: 0 0 20px 0;
+        color: var(--text-main);
+        font-size: 1rem;
+        font-weight: 600;
+      }
+
+      .canvas-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+      }
+
+      @media (max-width: 850px) {
+        .chart-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>📊 Inventory Dashboard</h1>
+        <button class="back-btn" onclick="window.location.href = 'index.html'">
+          ← Back to Inventory
+        </button>
+      </div>
+
+      <div class="cards-grid">
+        <div class="card">
+          <p>Total Items</p>
+          <h2 id="totalItems">0</h2>
+        </div>
+        <div class="card">
+          <p>Low Stock Items</p>
+          <h2 id="lowStock">0</h2>
+        </div>
+        <div class="card">
+          <p>Total Inventory Value</p>
+          <h2 id="inventoryValue">₹0</h2>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-box">
+          <h4>Stock Status Distribution</h4>
+          <div class="canvas-container">
+            <canvas id="stockChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-box">
+          <h4>Item-wise Valuation</h4>
+          <div class="canvas-container">
+            <canvas id="valueChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API = "http://localhost:5000/api/items";
+
+      window.onload = loadDashboard;
+
+      async function loadDashboard() {
+        try {
+          const res = await fetch(API);
+          if (!res.ok) throw new Error("Failed to fetch data");
+          const items = await res.json();
+          createDashboard(items);
+        } catch (error) {
+          console.error("Dashboard Error:", error);
+        }
+      }
+
+      function createDashboard(items) {
+        let inStock = 0;
+        let lowStockCount = 0;
+        let zeroStock = 0;
+        let totalValue = 0;
+
+        let names = [];
+        let values = [];
+
+        items.forEach((i) => {
+          // Logic for stock status
+          if (i.quantity === 0) {
+            zeroStock++;
+          } else if (i.quantity <= i.threshold) {
+            lowStockCount++;
+          } else {
+            inStock++;
+          }
+
+          // Logic for valuation
+          const itemTotal = i.quantity * i.unitPrice;
+          totalValue += itemTotal;
+        });
+        /* ---------- TOP 15 ITEMS ---------- */
+
+        const sortedItems = items
+        .map(i => ({
+        name: i.itemName,
+        value: i.quantity * i.unitPrice 
+        }))
+        .sort((a,b)=> b.value - a.value)
+        .slice(0,15);
+
+        names = sortedItems.map(i=>i.name);
+        values = sortedItems.map(i=>i.value);
+
+        // Update KPI Text
+        document.getElementById("totalItems").innerText = items.length;
+        document.getElementById("lowStock").innerText =
+          lowStockCount + zeroStock;
+        document.getElementById("inventoryValue").innerText =
+          "₹" + totalValue.toLocaleString("en-IN");
+
+        // 1. STOCK DISTRIBUTION (Doughnut Chart)
+        new Chart(document.getElementById("stockChart"), {
+          type: "doughnut",
+          data: {
+            labels: ["In Stock", "Low Stock", "Out of Stock"],
+            datasets: [
+              {
+                data: [inStock, lowStockCount, zeroStock],
+                backgroundColor: ["#22c55e", "#f59e0b", "#ef4444"],
+                hoverOffset: 4,
+                borderWidth: 2,
+                borderColor: "#ffffff",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: "bottom" },
+            },
+          },
+        });
+
+        // 2. ITEM VALUE (Bar Chart)
+        new Chart(document.getElementById("valueChart"), {
+          type: "bar",
+          data: {
+            labels: names,
+            datasets: [
+              {
+                label: "Value (₹)",
+                data: values,
+                backgroundColor: "#6366f1",
+                borderRadius: 6,
+                maxBarThickness: 40,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+
+            scales: {
+              y: {
+                beginAtZero: true,
+              },
+              x: {
+                ticks: {
+                  maxRotation: 45,
+                  minRotation: 45,
+                  autoSkip: true,
+                  maxTicksLimit: 15,
+                },
+              },
+            },
+
+            plugins: {
+              legend: { display: false },
+            },
+          },
+        });
+      }
+    </script>
+  </body>
+</html>
