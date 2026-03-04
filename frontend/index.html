@@ -1,42 +1,557 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manufacturing Inventory Management System | Admin</title>
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Inventory Management</title>
-</head>
-<body>
-    <h2>Inventory Summary</h2>
-    <button onclick="loadItems()">Refresh</button>
-    <table border="1" id="table">
-        <tr>
-            <th>Name</th>
-            <th>Quantity</th>
-            <th>Threshold</th>
-        </tr>
-    </table>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-<script>
-async function loadItems() {
-    const res = await fetch('http://localhost:5000/api/items');
-    const data = await res.json();
-    const table = document.getElementById('table');
-    table.innerHTML = `
-        <tr>
-            <th>Name</th>
-            <th>Quantity</th>
-            <th>Threshold</th>
-        </tr>
-    `;
-    data.forEach(item => {
-        table.innerHTML += `
-            <tr>
-                <td>${item.itemName}</td>
-                <td>${item.quantity}</td>
-                <td>${item.threshold}</td>
-            </tr>
-        `;
-    });
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+      :root {
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --bg-body: #f8fafc;
+        --bg-card: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+        --danger: #dc2626;
+        --success: #16a34a;
+        --shadow:
+          0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background-color: var(--bg-body);
+        color: var(--text-main);
+        padding: 40px;
+        display: flex;
+        justify-content: center;
+        min-height: 100vh;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 1400px; /* Large showcase window */
+      }
+
+      /* --- HEADER SECTION --- */
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+      }
+
+      .header h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .billing-btn {
+        background: white;
+        border: 1px solid var(--border);
+        padding: 10px 20px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+        text-decoration: none;
+        color: var(--text-main);
+      }
+
+      .billing-btn:hover {
+        background: #f1f5f9;
+        transform: translateY(-1px);
+      }
+
+      /* --- CONTROL PANEL (FORM) --- */
+      .control-panel {
+        background: var(--bg-card);
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        margin-bottom: 24px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: flex-end;
+      }
+
+      .input-group {
+        flex: 1;
+        min-width: 180px;
+      }
+
+      .input-group label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.95rem;
+        background: #fdfdfd;
+        transition: all 0.2s;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      }
+
+      .btn-group {
+        display: flex;
+        gap: 10px;
+      }
+
+      .btn {
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: 0.2s;
+      }
+
+      .btn-add {
+        background: var(--primary);
+        color: white;
+      }
+      .btn-add:hover {
+        background: var(--primary-hover);
+      }
+
+      .btn-update {
+        background: #f1f5f9;
+        color: var(--text-main);
+        border: 1px solid var(--border);
+      }
+      .btn-update:hover {
+        background: #e2e8f0;
+      }
+
+      .btn-delete {
+        background: #fee2e2;
+        color: var(--danger);
+      }
+      .btn-delete:hover {
+        background: #fecaca;
+      }
+
+      /* --- SEARCH BOX --- */
+      .search-container {
+        position: relative;
+        margin-bottom: 24px;
+        max-width: 400px;
+      }
+
+      .search-container i {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+      }
+
+      .search-container input {
+        padding-left: 45px;
+        background: white;
+        border-radius: 50px;
+        border: 1px solid var(--border);
+      }
+
+      /* --- DATA TABLE --- */
+      .inventory-card {
+        background: var(--bg-card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.03);
+        overflow: hidden;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th {
+        background: #f8fafc;
+        text-align: left;
+        padding: 18px 24px;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      td {
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.95rem;
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      tr:hover td {
+        background: #f8fafc;
+        cursor: pointer;
+      }
+
+      tr.selected td {
+        background: #eff6ff !important;
+        border-bottom-color: #bfdbfe;
+      }
+
+      /* --- BADGES & REFINEMENTS --- */
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+
+      .status-ok {
+        background: #dcfce7;
+        color: var(--success);
+      }
+      .status-zero{
+background:#fee2e2;
+color:#dc2626;
 }
-</script>
-</body>
+
+.status-low{
+background:#fef3c7;
+color:#b45309;
+}
+
+      .qty-text {
+        font-family: "Courier New", Courier, monospace;
+        font-weight: 700;
+        font-size: 1rem;
+      }
+
+      .price-text {
+        font-weight: 600;
+        color: var(--text-main);
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1><i data-lucide="package-check"></i> Inventory Showcase</h1>
+        <div class="header-actions">
+          <a href="billing.html" class="billing-btn">
+            <i data-lucide="receipt"></i> Go to Billing
+          </a>
+          <a href="dashboard.html" class="billing-btn">📊 Dashboard </a>
+          <div
+            id="item-count"
+            style="color: var(--text-muted); font-weight: 500"
+          >
+            Loading items...
+          </div>
+        </div>
+      </div>
+
+      <div class="control-panel">
+        <input type="hidden" id="itemId" />
+
+        <div class="input-group">
+          <label>Item Name</label>
+          <input id="itemName" placeholder="e.g. Bharat Cement" />
+        </div>
+
+        <div class="input-group" style="flex: 0.4">
+          <label>Stock Quantity</label>
+          <input id="quantity" type="number" placeholder="0" />
+        </div>
+
+        <div class="input-group" style="flex: 0.4">
+          <label>Alert Level</label>
+          <input id="threshold" type="number" placeholder="5" />
+        </div>
+
+        <div class="input-group" style="flex: 0.4">
+          <label>Unit Price (₹)</label>
+          <input id="unitPrice" type="number" placeholder="0.00" />
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-add" onclick="addItem()">
+            <i data-lucide="plus-circle" size="18"></i> Add
+          </button>
+          <button class="btn btn-update" onclick="updateItem()">Update</button>
+          <button class="btn btn-delete" onclick="deleteItem()">
+            <i data-lucide="trash-2" size="18"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="search-container">
+        <i data-lucide="search" size="18"></i>
+        <input
+          id="search"
+          placeholder="Search by product name..."
+          onkeyup="searchItem()"
+        />
+      </div>
+
+      <div class="inventory-card">
+        <table id="inventoryTable">
+          <thead>
+            <tr>
+              <th>Product Details</th>
+              <th>Price per Unit</th>
+              <th>Current Stock</th>
+              <th>Threshold</th>
+              <th>Stock Status</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      // Initialize Lucide Icons
+      lucide.createIcons();
+
+      // API Configuration
+      const API = "http://localhost:5000/api/items";
+
+      // Load data on page startup
+      window.onload = loadItems;
+
+      /* ================= LOAD DATA ================= */
+      async function loadItems() {
+        try {
+          const res = await fetch(API);
+          if (!res.ok) throw new Error("Network response was not ok");
+          const data = await res.json();
+
+          document.getElementById("item-count").innerText =
+            `${data.length} items in total`;
+          renderTable(data);
+        } catch (error) {
+          console.error("Error loading items:", error);
+          document.getElementById("tableBody").innerHTML =
+            `<tr><td colspan="5" style="text-align:center; padding:40px; color:var(--text-muted)">
+                    ⚠️ Unable to connect to server. Please check your backend.</td></tr>`;
+        }
+      }
+
+      /* ================= RENDER TABLE ================= */
+      function renderTable(data) {
+        const tbody = document.getElementById("tableBody");
+        tbody.innerHTML = "";
+
+        data.forEach((item) => {
+          const isZero = item.quantity === 0;
+          const isLow = item.quantity > 0 && item.quantity <= item.threshold;
+          const row = document.createElement("tr");
+          row.id = `row-${item._id}`;
+
+          // Select row on click
+          row.onclick = () =>
+            selectItem(
+              item._id,
+              item.itemName,
+              item.quantity,
+              item.threshold,
+              item.unitPrice,
+            );
+
+          row.innerHTML = `
+<td style="font-weight:600;">${item.itemName}</td>
+
+<td class="price-text">
+₹${(item.unitPrice || 0).toLocaleString()}
+</td>
+
+<td class="qty-text" style="color:${
+  isZero
+    ? "var(--danger)"
+    : isLow
+    ? "#f59e0b"
+    : "var(--text-main)"
+}">
+${item.quantity} units
+</td>
+
+<td style="color:var(--text-muted)">
+${item.threshold || 0}
+</td>
+
+<td>
+<span class="status-badge ${
+  isZero ? "status-zero" :
+  isLow ? "status-low" :
+  "status-ok"
+}">
+<i data-lucide="${
+  isZero ? "x-circle" :
+  isLow ? "alert-triangle" :
+  "check-circle"
+}" size="14"></i>
+
+${
+  isZero ? "Out Of Stock" :
+  isLow ? "Low Stock" :
+  "In Stock"
+}
+</span>
+</td>
+`;
+          tbody.appendChild(row);
+        });
+        lucide.createIcons(); // Refresh icons for new rows
+      }
+
+      /* ================= CRUD OPERATIONS ================= */
+      async function addItem() {
+        if (!itemName.value || !unitPrice.value) {
+          alert("Please fill in the Item Name and Unit Price.");
+          return;
+        }
+
+        try {
+          await fetch(API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              itemName: itemName.value,
+              quantity: Number(quantity.value) || 0,
+              threshold: Number(threshold.value) || 0,
+              unitPrice: Number(unitPrice.value) || 0,
+            }),
+          });
+          clearForm();
+          loadItems();
+        } catch (e) {
+          alert("Error adding item");
+        }
+      }
+
+      async function updateItem() {
+        if (!itemId.value) return alert("Select an item from the table first.");
+
+        try {
+          await fetch(`${API}/${itemId.value}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              itemName: itemName.value,
+              quantity: Number(quantity.value),
+              threshold: Number(threshold.value),
+              unitPrice: Number(unitPrice.value),
+            }),
+          });
+          clearForm();
+          loadItems();
+        } catch (e) {
+          alert("Update failed");
+        }
+      }
+
+      async function deleteItem() {
+        if (!itemId.value) return alert("Please select an item to delete.");
+
+        if (confirm(`Are you sure you want to delete "${itemName.value}"?`)) {
+          try {
+            await fetch(`${API}/${itemId.value}`, { method: "DELETE" });
+            clearForm();
+            loadItems();
+          } catch (e) {
+            alert("Delete failed");
+          }
+        }
+      }
+
+      /* ================= UTILITY FUNCTIONS ================= */
+      function searchItem() {
+        const searchTerm = document
+          .getElementById("search")
+          .value.toLowerCase();
+        const rows = document.querySelectorAll("#tableBody tr");
+
+        rows.forEach((row) => {
+          const name = row.cells[0].innerText.toLowerCase();
+          row.style.display = name.includes(searchTerm) ? "" : "none";
+        });
+      }
+
+      function selectItem(id, name, qty, th, price) {
+        // UI: Update selected row styling
+        document
+          .querySelectorAll("tr")
+          .forEach((r) => r.classList.remove("selected"));
+        const selectedRow = document.getElementById(`row-${id}`);
+        if (selectedRow) selectedRow.classList.add("selected");
+
+        // Form: Fill data
+        document.getElementById("itemId").value = id;
+        document.getElementById("itemName").value = name;
+        document.getElementById("quantity").value = qty;
+        document.getElementById("threshold").value = th;
+        document.getElementById("unitPrice").value = price;
+      }
+
+      function clearForm() {
+        document.getElementById("itemId").value = "";
+        document.getElementById("itemName").value = "";
+        document.getElementById("quantity").value = "";
+        document.getElementById("threshold").value = "";
+        document.getElementById("unitPrice").value = "";
+        document
+          .querySelectorAll("tr")
+          .forEach((r) => r.classList.remove("selected"));
+      }
+    </script>
+  </body>
 </html>
